@@ -1,6 +1,7 @@
 package headers
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
@@ -15,36 +16,24 @@ func NewHeaders() Headers {
 }
 
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {
-	if len(data) >= 2 && data[0] == '\r' && data[1] == '\n' {
+	crlfIndex := bytes.Index(data, []byte(crlf))
+	if crlfIndex == -1 {
+		return 0, false, fmt.Errorf("not enough data provided")
+	}
+	if crlfIndex == 0 {
 		return 2, true, nil
 	}
 
-	crlfIndex := -1
+	parts := bytes.SplitN(data[:crlfIndex], []byte(":"), 2)
+	key := string(parts[0])
 
-	for i := 0; i+1 < len(data); i++ {
-		if data[i] == '\r' && data[i+1] == '\n' {
-			crlfIndex = i
-			break
-		}
+	if key != strings.TrimRight(string(key), " ") {
+		return 0, false, fmt.Errorf("invalid header name: %s", key)
 	}
 
-	if crlfIndex == -1 {
-		return 0, false, nil
-	}
+	value := string(bytes.TrimSpace(parts[1]))
+	key = strings.TrimSpace(key)
 
-	fieldLine := strings.Trim(string(data[:crlfIndex]), " ")
-
-	for i := range fieldLine {
-		if fieldLine[i] == ':' && fieldLine[i-1] == ' ' {
-			return 0, false, fmt.Errorf("error: invalid spacing")
-		}
-	}
-
-	fieldLineParts := strings.Split(fieldLine, " ")
-	fieldName := strings.Split(fieldLineParts[0], ":")[0]
-	fieldValue := strings.Trim(strings.Split(fieldLineParts[1], crlf)[0], " ")
-
-	h[fieldName] = fieldValue
-
+	h[key] = value
 	return crlfIndex + 2, false, nil
 }
