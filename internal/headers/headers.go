@@ -3,12 +3,15 @@ package headers
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"strings"
 )
 
 type Headers map[string]string
 
 const crlf = "\r\n"
+
+var tokenChars = []byte{'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~'}
 
 func NewHeaders() Headers {
 	headers := make(Headers)
@@ -33,7 +36,31 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 
 	value := string(bytes.TrimSpace(parts[1]))
 	key = strings.TrimSpace(key)
+	key = strings.ToLower(key)
+
+	if !validTokens([]byte(key)) {
+		return 0, false, fmt.Errorf("invalid header token has been in found: %s", key)
+	}
 
 	h[key] = value
 	return crlfIndex + 2, false, nil
+}
+
+func validTokens(data []byte) bool {
+	for _, c := range data {
+		if !isTokenChar(c) {
+			return false
+		}
+	}
+	return true
+}
+
+func isTokenChar(c byte) bool {
+	if c >= 'A' && c <= 'Z' ||
+		c >= 'a' && c <= 'z' ||
+		c >= '0' && c <= '9' {
+		return true
+	}
+
+	return slices.Contains(tokenChars, c)
 }
