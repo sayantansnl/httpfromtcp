@@ -42,7 +42,12 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 		return 0, false, fmt.Errorf("invalid header token has been in found: %s", key)
 	}
 
-	h[key] = value
+	if h[key] != "" {
+		h[key] = fmt.Sprintf("%s, %s", h[key], value)
+	} else {
+		h[key] = value
+	}
+
 	return crlfIndex + 2, false, nil
 }
 
