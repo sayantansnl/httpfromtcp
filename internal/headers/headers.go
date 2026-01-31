@@ -21,7 +21,7 @@ func NewHeaders() Headers {
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	crlfIndex := bytes.Index(data, []byte(crlf))
 	if crlfIndex == -1 {
-		return 0, false, fmt.Errorf("not enough data provided")
+		return 0, false, nil
 	}
 	if crlfIndex == 0 {
 		return 2, true, nil
