@@ -42,12 +42,7 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 		return 0, false, fmt.Errorf("invalid header token has been in found: %s", key)
 	}
 
-	if h[key] != "" {
-		h[key] = fmt.Sprintf("%s, %s", h[key], value)
-	} else {
-		h[key] = value
-	}
-
+	h.Set(key, value)
 	return crlfIndex + 2, false, nil
 }
 
@@ -68,4 +63,23 @@ func isTokenChar(c byte) bool {
 	}
 
 	return slices.Contains(tokenChars, c)
+}
+
+func (h Headers) Set(key, value string) {
+	if h[key] != "" {
+		h[key] = fmt.Sprintf("%s, %s", h[key], value)
+	} else {
+		h[key] = value
+	}
+}
+
+func (h Headers) Get(key string) string {
+	keyLowerCase := strings.ToLower(key)
+
+	val, ok := h[keyLowerCase]
+	if !ok {
+		return ""
+	}
+
+	return val
 }
