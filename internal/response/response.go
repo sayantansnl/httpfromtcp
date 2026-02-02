@@ -10,29 +10,29 @@ import (
 type StatusCode int
 
 const (
-	ok          StatusCode = 200
-	badRequest  StatusCode = 400
-	serverError StatusCode = 500
+	StatusCodeSuccess     StatusCode = 200
+	StatusCodeBadRequest  StatusCode = 400
+	StatusCodeServerError StatusCode = 500
 )
 
 func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
 	switch statusCode {
-	case ok:
+	case StatusCodeSuccess:
 		_, err := w.Write([]byte("HTTP/1.1 200 OK\r\n"))
 		if err != nil {
-			return fmt.Errorf("StatusCode: %d, error in writing: %w", ok, err)
+			return fmt.Errorf("StatusCode: %d, error in writing: %w", StatusCodeSuccess, err)
 		}
 		return nil
-	case badRequest:
+	case StatusCodeBadRequest:
 		_, err := w.Write([]byte("HTTP/1.1 400 Bad Request\r\n"))
 		if err != nil {
-			return fmt.Errorf("StatusCode: %d, error in writing: %w", badRequest, err)
+			return fmt.Errorf("StatusCode: %d, error in writing: %w", StatusCodeBadRequest, err)
 		}
 		return nil
-	case serverError:
+	case StatusCodeServerError:
 		_, err := w.Write([]byte("HTTP/1.1 500 Internal Server Error\r\n"))
 		if err != nil {
-			return fmt.Errorf("StatusCode: %d, error in writing: %w", serverError, err)
+			return fmt.Errorf("StatusCode: %d, error in writing: %w", StatusCodeServerError, err)
 		}
 		return nil
 	default:
