@@ -58,6 +58,6 @@ func WriteHeaders(w io.Writer, headers headers.Headers) error {
 			return err
 		}
 	}
-	_, err := w.Write([]byte("\r\n\r\n"))
+	_, err := w.Write([]byte("\r\n"))
 	return err
 }

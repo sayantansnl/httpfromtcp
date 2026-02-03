@@ -20,18 +20,18 @@ func handler(w io.Writer, req *request.Request) *server.HandlerError {
 	if reqTarget == "/yourproblem" {
 		return &server.HandlerError{
 			StatusCode: response.StatusCodeBadRequest,
-			Message:    "Your problem is not my problem\r\n",
+			Message:    "Your problem is not my problem\n",
 		}
 	}
 
 	if reqTarget == "/myproblem" {
 		return &server.HandlerError{
 			StatusCode: response.StatusCodeServerError,
-			Message:    "Woopsie, my bad\r\n",
+			Message:    "Woopsie, my bad\n",
 		}
 	}
 
-	w.Write([]byte("All good, frfr\r\n"))
+	w.Write([]byte("All good, frfr\n"))
 	return nil
 }
 
