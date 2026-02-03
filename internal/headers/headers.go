@@ -66,11 +66,15 @@ func isTokenChar(c byte) bool {
 }
 
 func (h Headers) Set(key, value string) {
-	if h[key] != "" {
-		h[key] = fmt.Sprintf("%s, %s", h[key], value)
-	} else {
-		h[key] = value
+	key = strings.ToLower(key)
+	v, ok := h[key]
+	if ok {
+		value = strings.Join([]string{
+			v,
+			value,
+		}, ", ")
 	}
+	h[key] = value
 }
 
 func (h Headers) Get(key string) string {
@@ -82,4 +86,9 @@ func (h Headers) Get(key string) string {
 	}
 
 	return val
+}
+
+func (h Headers) Override(key, value string) {
+	key = strings.ToLower(key)
+	h[key] = value
 }

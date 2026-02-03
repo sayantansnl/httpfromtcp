@@ -15,6 +15,16 @@ const (
 	StatusCodeServerError StatusCode = 500
 )
 
+type Writer struct {
+	writer io.Writer
+}
+
+func NewWriter(w io.Writer) *Writer {
+	return &Writer{
+		writer: w,
+	}
+}
+
 func getStatusLine(statusCode StatusCode) []byte {
 	reasonPhrase := ""
 	switch statusCode {
@@ -28,8 +38,8 @@ func getStatusLine(statusCode StatusCode) []byte {
 	return []byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n", statusCode, reasonPhrase))
 }
 
-func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
-	_, err := w.Write(getStatusLine(statusCode))
+func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
+	_, err := w.writer.Write(getStatusLine(statusCode))
 	return err
 }
 
@@ -43,13 +53,17 @@ func GetDefaultHeaders(contentLen int) headers.Headers {
 	return headers
 }
 
-func WriteHeaders(w io.Writer, headers headers.Headers) error {
+func (w *Writer) WriteHeaders(headers headers.Headers) error {
 	for key, val := range headers {
-		_, err := w.Write([]byte(fmt.Sprintf("%s: %s\r\n", key, val)))
+		_, err := w.writer.Write([]byte(fmt.Sprintf("%s: %s\r\n", key, val)))
 		if err != nil {
 			return err
 		}
 	}
-	_, err := w.Write([]byte("\r\n"))
+	_, err := w.writer.Write([]byte("\r\n"))
 	return err
+}
+
+func (w *Writer) WriteBody(p []byte) (int, error) {
+	return w.writer.Write(p)
 }
