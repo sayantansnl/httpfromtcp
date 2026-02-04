@@ -1,11 +1,17 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
+	"github.com/sayantansnl/httpfromtcp/internal/headers"
 	"github.com/sayantansnl/httpfromtcp/internal/request"
 	"github.com/sayantansnl/httpfromtcp/internal/response"
 	"github.com/sayantansnl/httpfromtcp/internal/server"
@@ -40,6 +46,11 @@ func handler(w *response.Writer, req *request.Request) {
 		return
 	}
 
+	if strings.HasPrefix(reqTarget, "/httpbin") {
+		handleHTTPBinProxy(w, req)
+		return
+	}
+
 	handleSuccess(w, req)
 }
 
@@ -68,4 +79,47 @@ func handleSuccess(w *response.Writer, _ *request.Request) {
 	headers.Override("Content-Type", "text/html")
 	w.WriteHeaders(headers)
 	w.WriteBody([]byte(respBody))
+}
+
+func handleHTTPBinProxy(w *response.Writer, req *request.Request) {
+	trimmed := strings.TrimPrefix(req.RequestLine.RequestTarget, "/httpbin")
+	newUrl := fmt.Sprintf("https://httpbin.org%s", trimmed)
+
+	res, err := http.Get(newUrl)
+	if err != nil {
+		log.Printf("proxy error: unable to get response from %s: %v", newUrl, err)
+		w.WriteStatusLine(response.StatusCodeServerError)
+		body := []byte("upstream error")
+		h := response.GetDefaultHeaders(len(body))
+		w.WriteHeaders(h)
+		w.WriteBody(body)
+		return
+	}
+
+	defer res.Body.Close()
+
+	w.WriteStatusLine(response.StatusCodeSuccess)
+	respHeaders := headers.NewHeaders()
+	respHeaders.Set("Transfer-Encoding", "chunked")
+	w.WriteHeaders(respHeaders)
+
+	buff := make([]byte, 1024)
+	for {
+		n, err := res.Body.Read(buff)
+		if n > 0 {
+			_, writeErr := w.WriteChunkedBody(buff[:n])
+			if writeErr != nil {
+				log.Printf("unable to write to buffer: %v", writeErr)
+				return
+			}
+		}
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			log.Printf("unable to write to buffer: %v", err)
+			return
+		}
+	}
+	w.WriteChunkedBodyDone()
 }
