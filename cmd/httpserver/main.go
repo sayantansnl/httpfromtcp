@@ -20,6 +20,7 @@ import (
 )
 
 const port = 42069
+const filePath = "assets/vim.mp4"
 
 func main() {
 	server, err := server.Serve(port, handler)
@@ -45,6 +46,11 @@ func handler(w *response.Writer, req *request.Request) {
 
 	if reqTarget == "/myproblem" {
 		handleServerError(w, req)
+		return
+	}
+
+	if reqTarget == "/video" {
+		handleVideo(w, req)
 		return
 	}
 
@@ -134,4 +140,19 @@ func handleHTTPBinProxy(w *response.Writer, req *request.Request) {
 	trailerHeaders.Set("X-Content-Length", fmt.Sprint(len(fullBody)))
 
 	w.WriteTrailers(trailerHeaders)
+}
+
+func handleVideo(w *response.Writer, req *request.Request) {
+	w.WriteStatusLine(response.StatusCodeSuccess)
+	videoBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Printf("error in displaying file, %v", err)
+		handleServerError(w, req)
+		return
+	}
+	contentLen := len(videoBytes)
+	headers := response.GetDefaultHeaders(contentLen)
+	headers.Override("Content-Type", "video/mp4")
+	w.WriteHeaders(headers)
+	w.WriteBody(videoBytes)
 }
