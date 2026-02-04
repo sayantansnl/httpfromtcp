@@ -94,5 +94,6 @@ func (h Headers) Override(key, value string) {
 }
 
 func (h Headers) Delete(key string) {
+	key = strings.ToLower(key)
 	delete(h, key)
 }
