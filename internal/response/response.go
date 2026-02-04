@@ -127,10 +127,25 @@ func (w *Writer) WriteChunkedBodyDone() (int, error) {
 		return 0, fmt.Errorf("unable to write body in writer state %d", w.writerState)
 	}
 
-	n, err := w.writer.Write([]byte("0\r\n\r\n"))
+	n, err := w.writer.Write([]byte("0\r\n"))
 	if err != nil {
 		return 0, fmt.Errorf("unable to write terminating sequence, error: %w", err)
 	}
 
 	return n, nil
+}
+
+func (w *Writer) WriteTrailers(headers headers.Headers) error {
+	for key, value := range headers {
+		header := fmt.Sprintf("%s: %s\r\n", key, value)
+		if _, err := w.writer.Write([]byte(header)); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.writer.Write([]byte("\r\n")); err != nil {
+		return err
+	}
+
+	return nil
 }

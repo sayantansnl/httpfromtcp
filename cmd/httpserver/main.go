@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -101,12 +103,15 @@ func handleHTTPBinProxy(w *response.Writer, req *request.Request) {
 	w.WriteStatusLine(response.StatusCodeSuccess)
 	respHeaders := headers.NewHeaders()
 	respHeaders.Set("Transfer-Encoding", "chunked")
+	respHeaders.Set("Trailer", "X-Content-SHA256, X-Content-Length")
 	w.WriteHeaders(respHeaders)
 
 	buff := make([]byte, 1024)
+	fullBody := []byte{}
 	for {
 		n, err := res.Body.Read(buff)
 		if n > 0 {
+			fullBody = append(fullBody, buff[:n]...)
 			_, writeErr := w.WriteChunkedBody(buff[:n])
 			if writeErr != nil {
 				log.Printf("unable to write to buffer: %v", writeErr)
@@ -122,4 +127,11 @@ func handleHTTPBinProxy(w *response.Writer, req *request.Request) {
 		}
 	}
 	w.WriteChunkedBodyDone()
+	sum := sha256.Sum256(fullBody)
+
+	trailerHeaders := headers.NewHeaders()
+	trailerHeaders.Set("X-Content-SHA256", hex.EncodeToString(sum[:]))
+	trailerHeaders.Set("X-Content-Length", fmt.Sprint(len(fullBody)))
+
+	w.WriteTrailers(trailerHeaders)
 }
