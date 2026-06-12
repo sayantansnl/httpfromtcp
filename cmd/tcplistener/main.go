@@ -10,10 +10,10 @@ import (
 )
 
 const PORT = ":42069"
-const network = "tcp"
+const NETWORK = "tcp"
 
 func main() {
-	listener, err := net.Listen(network, PORT)
+	listener, err := net.Listen(NETWORK, PORT)
 	if err != nil {
 		log.Fatalf("error in creating listener, error: %v", err)
 	}
