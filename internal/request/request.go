@@ -1,6 +1,7 @@
 package request
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -16,13 +17,20 @@ type RequestLine struct {
 	Method        string
 }
 
+const crlf = "\r\n"
+
 func RequestFromReader(reader io.Reader) (*Request, error) {
-	bytes, err := io.ReadAll(reader)
+	bytesRead, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
 
-	requestPart := strings.Split(string(bytes), "\r\n")[0]
+	crlfIdx := bytes.Index(bytesRead, []byte(crlf))
+	if crlfIdx == -1 {
+		return nil, fmt.Errorf("couldn't find CRLF in request line")
+	}
+
+	requestPart := strings.Split(string(bytesRead), crlf)[0]
 
 	reqLine, err := parseRequestLine(requestPart)
 	if err != nil {
@@ -41,6 +49,12 @@ func parseRequestLine(requestPart string) (*RequestLine, error) {
 	}
 
 	method := requestLineParts[0]
+	for i := 0; i < len(method); i++ {
+		if method[i] < 'A' || method[i] > 'Z' {
+			return nil, fmt.Errorf("method should only be in capital letters")
+		}
+	}
+
 	reqTarget := requestLineParts[1]
 
 	httpPart := strings.Split(requestLineParts[2], "/")
@@ -57,12 +71,6 @@ func parseRequestLine(requestPart string) (*RequestLine, error) {
 
 	if httpVersion != "1.1" {
 		return nil, fmt.Errorf("only version 1.1 is supported")
-	}
-
-	for i := 0; i < len(method); i++ {
-		if method[i] < 'A' || method[i] > 'Z' {
-			return nil, fmt.Errorf("method should only be in capital letters")
-		}
 	}
 
 	requestLine := RequestLine{
