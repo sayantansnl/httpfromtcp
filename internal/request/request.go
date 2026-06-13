@@ -9,6 +9,7 @@ import (
 
 type Request struct {
 	RequestLine RequestLine
+	State       State
 }
 
 type RequestLine struct {
@@ -16,6 +17,13 @@ type RequestLine struct {
 	RequestTarget string
 	Method        string
 }
+
+type State int
+
+const (
+	initialized State = iota
+	done
+)
 
 const crlf = "\r\n"
 
@@ -25,14 +33,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		return nil, err
 	}
 
-	crlfIdx := bytes.Index(bytesRead, []byte(crlf))
-	if crlfIdx == -1 {
-		return nil, fmt.Errorf("couldn't find CRLF in request line")
-	}
-
-	requestPart := strings.Split(string(bytesRead), crlf)[0]
-
-	reqLine, err := parseRequestLine(requestPart)
+	reqLine, err := parseRequestLine(bytesRead)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +42,22 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	}, nil
 }
 
-func parseRequestLine(requestPart string) (*RequestLine, error) {
+func parseRequestLine(bytesRead []byte) (*RequestLine, error) {
+	crlfIdx := bytes.Index(bytesRead, []byte(crlf))
+	if crlfIdx == -1 {
+		return nil, fmt.Errorf("couldn't find CRLF in request line")
+	}
+
+	requestPart := strings.Split(string(bytesRead), crlf)[0]
+	requestLine, err := requestLineFromRequestPart(requestPart)
+	if err != nil {
+		return nil, err
+	}
+
+	return requestLine, nil
+}
+
+func requestLineFromRequestPart(requestPart string) (*RequestLine, error) {
 	requestLineParts := strings.Split(requestPart, " ")
 
 	if len(requestLineParts) != 3 {
