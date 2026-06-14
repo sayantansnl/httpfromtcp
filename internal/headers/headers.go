@@ -45,7 +45,17 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 
 func (h Headers) Set(key, val string) {
 	lowerKey := strings.ToLower(key)
-	h[lowerKey] = strings.ToLower(val)
+	lowerVal := strings.ToLower(val)
+
+	if _, ok := h[lowerKey]; !ok {
+		h[lowerKey] = lowerVal
+		return
+	}
+
+	originalVal := h[lowerKey]
+	splittedOriginalVal := strings.Split(originalVal, ", ")
+	splittedOriginalVal = append(splittedOriginalVal, lowerVal)
+	h[lowerKey] = strings.Join(splittedOriginalVal, ", ")
 }
 
 func ensureValidKey(key string) error {

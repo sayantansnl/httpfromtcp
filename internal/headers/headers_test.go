@@ -76,4 +76,17 @@ func TestHeadersParse(t *testing.T) {
 	data = []byte("h©st: localhost:42069\r\n\r\n")
 	n, done, err = headers.Parse(data)
 	require.Error(t, err)
+
+	//Test: duplicate headers
+	headers = Headers{"content-type": "xml"}
+	data = []byte("content-type: application/xml\r\n\r\n")
+	n, done, err = headers.Parse(data)
+	require.NoError(t, err)
+	assert.Equal(t, "xml, application/xml", headers["content-type"])
+
+	headers = Headers{"content-type": "xml, text/html"}
+	data = []byte("content-type: application/xml\r\n\r\n")
+	n, done, err = headers.Parse(data)
+	require.NoError(t, err)
+	assert.Equal(t, "xml, text/html, application/xml", headers["content-type"])
 }
