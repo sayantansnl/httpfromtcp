@@ -24,23 +24,16 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 		return 2, true, nil
 	}
 
-	header := string(data[:idx])
-
-	key := strings.Split(header, ": ")[0]
-	val := strings.Split(header, ": ")[1]
-
-	valWithoutCRLF := strings.Split(val, crlf)[0]
+	parts := bytes.SplitN(data[:idx], []byte(":"), 2)
+	key := string(parts[0])
+	val := string(parts[1])
 
 	if key != strings.TrimSpace(key) {
-		return 0, false, fmt.Errorf("poor formatting")
+		return 0, false, fmt.Errorf("invalid header name: %q", key)
 	}
 
-	h.Set(key, strings.TrimSpace(valWithoutCRLF))
-
-	h.Parse(data[idx+2:])
-
-	n += idx + 2
-	return n, false, nil
+	h.Set(key, strings.TrimSpace(val))
+	return idx + 2, false, nil
 }
 
 func (h Headers) Set(key, val string) {

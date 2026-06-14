@@ -36,15 +36,17 @@ func TestHeadersParse(t *testing.T) {
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	assert.Equal(t, "application/json", headers["Content-type"])
-	assert.Equal(t, "Bearer666", headers["Authorization"])
+	assert.Equal(t, "localhost:42069", headers["Host"])
+	assert.Equal(t, "en/agentSmith", headers["User-agent"])
+	assert.Equal(t, 32, n)
 	assert.False(t, done)
 
-	headers = map[string]string{"host": "localhost:42069"}
+	headers = map[string]string{"host": "localhost: 42069"}
 	data = []byte("User-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n")
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers["host"])
+	assert.Equal(t, "localhost: 42069", headers["host"])
 	assert.Equal(t, "curl/7.81.0", headers["User-Agent"])
 	assert.Equal(t, 25, n)
 	assert.False(t, done)
