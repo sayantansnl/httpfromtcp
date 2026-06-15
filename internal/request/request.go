@@ -171,7 +171,7 @@ func (r *Request) parseSingle(data []byte) (int, error) {
 		contentLength, ok := r.Headers.Get("Content-Length")
 		if !ok {
 			r.State = requestStateDone
-			return 0, nil
+			return len(data), nil
 		}
 
 		cl, err := strconv.Atoi(contentLength)
