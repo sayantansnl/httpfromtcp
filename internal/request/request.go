@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github/sayantansnl/httpfromtcp/internal/headers"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -13,6 +14,7 @@ type Request struct {
 	RequestLine RequestLine
 	Headers     headers.Headers
 	State       State
+	Body        []byte
 }
 
 type RequestLine struct {
@@ -26,6 +28,7 @@ type State int
 const (
 	requestStateInitialized State = iota
 	requestStateParsingHeaders
+	requestStateParsingBody
 	requestStateDone
 )
 
@@ -76,7 +79,7 @@ func parseRequestLine(bytesRead []byte) (*RequestLine, int, error) {
 		return nil, 0, nil
 	}
 
-	requestPart := strings.Split(string(bytesRead), crlf)[0]
+	requestPart := string(bytesRead[:crlfIdx])
 	requestLine, err := requestLineFromRequestPart(requestPart)
 	if err != nil {
 		return nil, 0, err
@@ -160,10 +163,31 @@ func (r *Request) parseSingle(data []byte) (int, error) {
 			return 0, err
 		}
 		if done {
-			r.State = requestStateDone
+			r.State = requestStateParsingBody
 			return n, nil
 		}
 		return n, err
+	case requestStateParsingBody:
+		contentLength, ok := r.Headers.Get("Content-Length")
+		if !ok {
+			r.State = requestStateDone
+			return 0, nil
+		}
+
+		cl, err := strconv.Atoi(contentLength)
+		if err != nil {
+			return 0, fmt.Errorf("couldn't convert string to int, error: %w", err)
+		}
+
+		r.Body = append(r.Body, data...)
+		bodyLength := len(r.Body)
+		if bodyLength > cl {
+			return 0, fmt.Errorf("provided content doesn't match content length")
+		}
+		if bodyLength == cl {
+			r.State = requestStateDone
+		}
+		return len(data), nil
 	case requestStateDone:
 		return 0, fmt.Errorf("error: trying to read data in a done state")
 	default:

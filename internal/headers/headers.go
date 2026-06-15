@@ -58,6 +58,13 @@ func (h Headers) Set(key, val string) {
 	h[lowerKey] = strings.Join(splittedOriginalVal, ", ")
 }
 
+func (h Headers) Get(key string) (string, bool) {
+	lowerKey := strings.ToLower(key)
+
+	val, ok := h[lowerKey]
+	return val, ok
+}
+
 func ensureValidKey(key string) error {
 	for _, k := range key {
 		if !isValidToken(k) {
