@@ -24,7 +24,7 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	}
 
 	if idx == 0 {
-		return 2, true, nil
+		return idx + 2, true, nil
 	}
 
 	parts := bytes.SplitN(data[:idx], []byte(":"), 2)
