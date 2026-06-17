@@ -1,7 +1,9 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
+	"github/sayantansnl/httpfromtcp/internal/request"
 	"github/sayantansnl/httpfromtcp/internal/response"
 	"log"
 	"net"
@@ -13,9 +15,10 @@ type Server struct {
 	Addr     string
 	Listener net.Listener
 	IsClosed *atomic.Bool
+	Handler  Handler
 }
 
-func Serve(port int) (*Server, error) {
+func Serve(port int, handler Handler) (*Server, error) {
 	addr := ":" + strconv.Itoa(port)
 
 	listener, err := net.Listen("tcp", addr)
@@ -27,6 +30,7 @@ func Serve(port int) (*Server, error) {
 		Addr:     addr,
 		Listener: listener,
 		IsClosed: &atomic.Bool{},
+		Handler:  handler,
 	}
 
 	go server.listen()
@@ -62,15 +66,30 @@ func (s *Server) listen() {
 func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
 
-	err := response.WriteStatusLine(conn, response.StatusOK)
+	req, err := request.RequestFromReader(conn)
 	if err != nil {
-		log.Fatalf("unable to write status line, error: %v", err)
+		log.Fatalf("unable to parse request from net.Conn, error: %v", err)
 	}
 
-	headers := response.GetDefaultHeaders(0)
+	b := bytes.Buffer{}
 
-	err = response.WriteHeaders(conn, headers)
-	if err != nil {
-		log.Fatalf("unable to write headers, error: %v", err)
+	handlerError := s.Handler(&b, req)
+
+	if handlerError.StatusCode == response.StatusServerError ||
+		handlerError.StatusCode == response.StatusBadRequest {
+		WriteError(conn, *handlerError)
+		return
 	}
+
+	headers := response.GetDefaultHeaders(b.Len())
+
+	if err := response.WriteStatusLine(conn, response.StatusOK); err != nil {
+		log.Fatal("error in writing status line")
+	}
+
+	if err := response.WriteHeaders(conn, headers); err != nil {
+		log.Fatal("error in writing headers")
+	}
+
+	conn.Write(b.Bytes())
 }
