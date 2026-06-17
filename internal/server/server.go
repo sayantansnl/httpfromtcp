@@ -2,6 +2,8 @@ package server
 
 import (
 	"fmt"
+	"github/sayantansnl/httpfromtcp/internal/response"
+	"log"
 	"net"
 	"strconv"
 	"sync/atomic"
@@ -58,8 +60,17 @@ func (s *Server) listen() {
 }
 
 func (s *Server) handle(conn net.Conn) {
-	response := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello World!")
+	defer conn.Close()
 
-	conn.Write(response)
-	conn.Close()
+	err := response.WriteStatusLine(conn, response.StatusOK)
+	if err != nil {
+		log.Fatalf("unable to write status line, error: %v", err)
+	}
+
+	headers := response.GetDefaultHeaders(0)
+
+	err = response.WriteHeaders(conn, headers)
+	if err != nil {
+		log.Fatalf("unable to write headers, error: %v", err)
+	}
 }
