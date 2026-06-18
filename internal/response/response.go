@@ -101,9 +101,21 @@ func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
 }
 
 func (w *Writer) WriteChunkedBodyDone() (int, error) {
-	n, err := w.ResWriter.Write([]byte("0\r\n\r\n"))
+	n, err := w.ResWriter.Write([]byte("0\r\n"))
 	if err != nil {
 		return n, err
 	}
 	return n, nil
+}
+
+func (w *Writer) WriteTrailers(h headers.Headers) error {
+	for key, val := range h {
+		_, err := w.ResWriter.Write([]byte(fmt.Sprintf("%s: %s\r\n", key, val)))
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err := w.ResWriter.Write([]byte("\r\n"))
+	return err
 }

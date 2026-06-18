@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github/sayantansnl/httpfromtcp/internal/headers"
 	"github/sayantansnl/httpfromtcp/internal/request"
 	"github/sayantansnl/httpfromtcp/internal/response"
 	"github/sayantansnl/httpfromtcp/internal/server"
@@ -11,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -38,6 +41,10 @@ func handlerFunc(w *response.Writer, req *request.Request) {
 	}
 	if req.RequestLine.RequestTarget == "/yourproblem" {
 		handler200(w, req)
+		return
+	}
+	if req.RequestLine.RequestTarget == "/video" {
+		videoHandler(w, req)
 		return
 	}
 	if req.RequestLine.RequestTarget == "/myproblem" {
@@ -118,8 +125,11 @@ func proxyHandler(w *response.Writer, req *request.Request) {
 	w.WriteStatusLine(response.StatusOK)
 	h := response.GetDefaultHeaders(0)
 	h.Override("Transfer-Encoding", "chunked")
+	h.Override("Trailer", "X-Content-SHA256, X-Content-Length")
 	h.Remove("Content-Length")
 	w.WriteHeaders(h)
+
+	fullBody := make([]byte, 0)
 
 	const maxSize = 1024
 	buffer := make([]byte, maxSize)
@@ -134,6 +144,7 @@ func proxyHandler(w *response.Writer, req *request.Request) {
 				fmt.Println("Error writing chunked body:", err)
 				break
 			}
+			fullBody = append(fullBody, buffer[:n]...)
 		}
 		if errors.Is(err, io.EOF) {
 			break
@@ -149,4 +160,29 @@ func proxyHandler(w *response.Writer, req *request.Request) {
 	if err != nil {
 		fmt.Println("Error writing chunked body done ", err)
 	}
+
+	trailers := headers.NewHeaders()
+	sha256 := fmt.Sprintf("%x", sha256.Sum256(fullBody))
+	trailers.Override("X-Content-SHA256", sha256)
+	trailers.Override("X-Content-Length", strconv.Itoa(len(fullBody)))
+	err = w.WriteTrailers(trailers)
+	if err != nil {
+		fmt.Println("Error writing trailers: ", err)
+	}
+
+	fmt.Println("Wrote trailers")
+}
+
+func videoHandler(w *response.Writer, _ *request.Request) {
+	w.WriteStatusLine(response.StatusOK)
+	filepath := "assets/vim.mp4"
+	videoBytes, err := os.ReadFile(filepath)
+	if err != nil {
+		fmt.Println("Error in reading file: ", err)
+	}
+
+	h := response.GetDefaultHeaders(len(videoBytes))
+	h.Override("Content-type", "video/mp4")
+	w.WriteHeaders(h)
+	w.WriteBody(videoBytes)
 }
