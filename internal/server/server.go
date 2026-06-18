@@ -1,15 +1,15 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
 	"github/sayantansnl/httpfromtcp/internal/request"
 	"github/sayantansnl/httpfromtcp/internal/response"
-	"log"
 	"net"
 	"strconv"
 	"sync/atomic"
 )
+
+type Handler func(w *response.Writer, req *request.Request)
 
 type Server struct {
 	Addr     string
@@ -65,31 +65,17 @@ func (s *Server) listen() {
 
 func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
-
+	writer := response.Writer{
+		ResWriter: conn,
+	}
 	req, err := request.RequestFromReader(conn)
 	if err != nil {
-		log.Fatalf("unable to parse request from net.Conn, error: %v", err)
+		writer.WriteStatusLine(response.StatusServerError)
+		body := []byte(fmt.Sprintf("error in parsing request, error: %v", err))
+		headers := response.GetDefaultHeaders(len(body))
+		writer.WriteHeaders(headers)
+		writer.WriteBody(body)
 	}
 
-	b := bytes.Buffer{}
-
-	handlerError := s.Handler(&b, req)
-
-	if handlerError.StatusCode == response.StatusServerError ||
-		handlerError.StatusCode == response.StatusBadRequest {
-		WriteError(conn, *handlerError)
-		return
-	}
-
-	headers := response.GetDefaultHeaders(b.Len())
-
-	if err := response.WriteStatusLine(conn, response.StatusOK); err != nil {
-		log.Fatal("error in writing status line")
-	}
-
-	if err := response.WriteHeaders(conn, headers); err != nil {
-		log.Fatal("error in writing headers")
-	}
-
-	conn.Write(b.Bytes())
+	s.Handler(&writer, req)
 }
